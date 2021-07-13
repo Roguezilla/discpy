@@ -120,4 +120,4 @@ class Bot:
 
 	async def on_ready(self):
 		await self.update_presence("with stars.", ActivityType.watching, Status.do_not_disturb)
-		self.send_message(777254114581020673, "dispy represent")
+		self.send_message(777254114581020673, "discpy represent")
