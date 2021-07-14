@@ -168,8 +168,11 @@ class DiscPy:
 	async def __on_ready(self):
 		await self.update_presence('with stars.', ActivityType.watching, Status.do_not_disturb)
 
-	async def __on_message(self, author, content, channel_id):
+	# maybe try to make something like commands?
+	async def __on_message(self, author: int, content: str, channel_id: int):
 		print(content)
+		if content.startswith(',ping'):
+			self.send_message(channel_id, 'Pong.')
 
 	async def __on_reaction_add(self, info):
 		reactions = MessageReactions(self.get_message(info['channel_id'], info['message_id'])['reactions'])
