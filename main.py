@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
 
-from discpy import Bot
+from discpy import DiscPy
 
 load_dotenv()
 
-bot = Bot(os.getenv('TOKEN'))
+bot = DiscPy(os.getenv('TOKEN'))
 bot.start()
