@@ -1,3 +1,4 @@
+from embeds import EmbedBuilder
 from json.decoder import JSONDecodeError
 from reactions import MessageReactions
 import requests
@@ -54,11 +55,14 @@ class DiscPy:
             }
 		})
 
-	def send_message(self, channel_id, content):
-		requests.post(
+	def send_message(self, channel_id, content = '', embed = None):		
+		if not content and not embed:
+			return
+
+		return requests.post(
 			self.__BASE_API_URL + f'/channels/{channel_id}/messages',
 			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' },
-			data = json.dumps ( { 'content': content } )
+			data = json.dumps ( {'content': content, 'embeds': [embed] if embed else None} )
 		)
 
 	def get_message(self, channel_id, message_id):
@@ -172,7 +176,19 @@ class DiscPy:
 	async def __on_message(self, author: int, content: str, channel_id: int):
 		print(content)
 		if content.startswith(',ping'):
-			self.send_message(channel_id, 'Pong.')
+			self.send_message(channel_id, content='Pong.')
+
+		if content.startswith(',embed'):
+			embed = EmbedBuilder(title='Title', description='Description.', url='https://www.google.com/', color=0xffcc00)
+			embed.set_author(name='rogue', url='https://www.google.com/', icon_url='https://cdn.discordapp.com/emojis/700809695933497355.gif')
+			embed.set_image(url='https://cdn.discordapp.com/emojis/700809695933497355.gif')
+			embed.set_thumbnail(url='https://cdn.discordapp.com/emojis/700809695933497355.gif')
+			embed.set_footer(text='by rogue#0001', icon_url='https://cdn.discordapp.com/emojis/700809695933497355.gif')
+			embed.add_field(name='yes', value='<#777251828743143424>', inline=True)
+			embed.add_field(name='no', value='no', inline=True)
+			embed.add_field(name='maybe', value='<@212149701535989760>', inline=False)
+
+			self.send_message(channel_id, embed=embed.embed_dict)
 
 	async def __on_reaction_add(self, info):
 		reactions = MessageReactions(self.get_message(info['channel_id'], info['message_id'])['reactions'])
