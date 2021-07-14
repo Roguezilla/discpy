@@ -1,4 +1,5 @@
 from json.decoder import JSONDecodeError
+from reactions import MessageReactions
 import requests
 import websockets
 import asyncio
@@ -59,6 +60,12 @@ class DiscPy:
 			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' },
 			data = json.dumps ( { 'content': content } )
 		)
+
+	def get_message(self, channel_id, message_id):
+		return requests.get(
+			self.__BASE_API_URL + f'/channels/{channel_id}/messages/{message_id}',
+			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
+		).json()
 
 	async def update_presence(self, name, type: ActivityType, status: Status):
 		presence = {
@@ -138,15 +145,15 @@ class DiscPy:
 
 							self.__session_id = recv_json['d']['session_id']
 
-							await self.on_ready()
+							await self.__on_ready()
 						elif event == 'MESSAGE_CREATE':
 							author = recv_json['d']['author']
 							content = recv_json['d']['content']
 							channel_id = recv_json['d']['channel_id']
 
-							await self.on_message(author, content, channel_id)
-						else:
-							print(recv_json)
+							await self.__on_message(author, content, channel_id)
+						elif event == 'MESSAGE_REACTION_ADD':
+							await self.__on_reaction_add(recv_json['d'])
 
 					if self.debug:
 						print(f'Sequence: {self.__sequence}')
@@ -158,8 +165,14 @@ class DiscPy:
 		self.loop.create_task(self.__process_payloads())
 		self.loop.run_forever()
 
-	async def on_ready(self):
+	async def __on_ready(self):
 		await self.update_presence('with stars.', ActivityType.watching, Status.do_not_disturb)
 
-	async def on_message(self, author, content, channel_id):
+	async def __on_message(self, author, content, channel_id):
 		print(content)
+
+	async def __on_reaction_add(self, info):
+		reactions = MessageReactions(self.get_message(info['channel_id'], info['message_id'])['reactions'])
+
+		print(info['emoji'])
+		print(reactions.get_count(info['emoji']))
