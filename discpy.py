@@ -1,6 +1,4 @@
-from embeds import EmbedBuilder
 from json.decoder import JSONDecodeError
-from reactions import MessageReactions
 import requests
 import websockets
 import asyncio
@@ -8,6 +6,9 @@ import json
 import platform
 
 from definitions import ActivityType, OpCodes, Status
+from reaction_events import ReactionAddEvent
+from message import Message
+from embeds import EmbedBuilder
 
 class DiscPy:
 	def __init__(self, token):
@@ -150,14 +151,12 @@ class DiscPy:
 							self.__session_id = recv_json['d']['session_id']
 
 							await self.__on_ready()
+						elif event == 'RESUMED':
+							print('RESUMED')
 						elif event == 'MESSAGE_CREATE':
-							author = recv_json['d']['author']
-							content = recv_json['d']['content']
-							channel_id = recv_json['d']['channel_id']
-
-							await self.__on_message(author, content, channel_id)
+							await self.__on_message(Message(recv_json['d']))
 						elif event == 'MESSAGE_REACTION_ADD':
-							await self.__on_reaction_add(recv_json['d'])
+							await self.__on_reaction_add(ReactionAddEvent(recv_json['d']))
 
 					if self.debug:
 						print(f'Sequence: {self.__sequence}')
@@ -173,12 +172,13 @@ class DiscPy:
 		await self.update_presence('with stars.', ActivityType.watching, Status.do_not_disturb)
 
 	# maybe try to make something like commands?
-	async def __on_message(self, author: int, content: str, channel_id: int):
-		print(content)
-		if content.startswith(',ping'):
-			self.send_message(channel_id, content='Pong.')
+	async def __on_message(self, msg: Message):
+		print(f'-Author: {msg.author.username}\n-Content: {msg.content}')
 
-		if content.startswith(',embed'):
+		if msg.content.startswith(',ping'):
+			self.send_message(msg.channel_id, content='Pong.')
+
+		if msg.content.startswith(',embed'):
 			embed = EmbedBuilder(title='Title', description='Description.', url='https://www.google.com/', color=0xffcc00)
 			embed.set_author(name='rogue', url='https://www.google.com/', icon_url='https://cdn.discordapp.com/emojis/700809695933497355.gif')
 			embed.set_image(url='https://cdn.discordapp.com/emojis/700809695933497355.gif')
@@ -188,10 +188,8 @@ class DiscPy:
 			embed.add_field(name='no', value='no', inline=True)
 			embed.add_field(name='maybe', value='<@212149701535989760>', inline=False)
 
-			self.send_message(channel_id, embed=embed.embed_dict)
+			self.send_message(msg.channel_id, embed=embed.embed_dict)
 
-	async def __on_reaction_add(self, info):
-		reactions = MessageReactions(self.get_message(info['channel_id'], info['message_id'])['reactions'])
-
-		print(info['emoji'])
-		print(reactions.get_count(info['emoji']))
+	async def __on_reaction_add(self, reaction: ReactionAddEvent):
+		message = Message(self.get_message(reaction.channel_id, reaction.message_id))
+		print(f'-Emoji: {reaction.emoji.format()}\n-Count: {message.get_reaction(reaction.emoji).count}')
