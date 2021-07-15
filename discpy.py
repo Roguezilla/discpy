@@ -5,12 +5,42 @@ import asyncio
 import json
 import platform
 
-from definitions import ActivityType, OpCodes, Status
 from reaction_events import ReactionAddEvent
 from message import Message
 from embeds import EmbedBuilder
 
 class DiscPy:
+	class OpCodes:
+		DISPATCH = 0
+		HEARTBEAT = 1
+		IDENTIFY = 2
+		PRESENCE = 3
+		VOICE_STATE = 4
+		VOICE_PING = 5
+		RESUME = 6
+		RECONNECT = 7
+		REQUEST_MEMBERS = 8
+		INVALIDATE_SESSION = 9
+		HELLO = 10
+		HEARTBEAT_ACK = 11
+		GUILD_SYNC = 12
+
+	class Status:
+		ONLINE = 'online'
+		OFFLINE = 'offline'
+		IDLE = 'idle'
+		DND = 'dnd'
+		INVISIBLE = 'invisible'
+
+	class ActivityType:
+		UNKNOWN = -1
+		PLAYING = 0
+		STREAMING = 1
+		LISTENING = 2
+		WATCHING = 3
+		CUSTOM = 4
+		COMPETING = 5
+
 	def __init__(self, token):
 		self.__token = token
 		self.loop = asyncio.get_event_loop()
@@ -28,13 +58,13 @@ class DiscPy:
 
 	def __hearbeat_json(self):
 		return json.dumps({
-			'op': OpCodes.HEARTBEAT,
+			'op': self.OpCodes.HEARTBEAT,
 			'd': self.__sequence
 		})
 
 	def __identify_json(self, intents):
 		return json.dumps({
-			'op': OpCodes.IDENTIFY,
+			'op': self.OpCodes.IDENTIFY,
 			'd': {
 				'token': self.__token,
 				'intents': intents, #32509 = basically all of them but the that need toggling options on dashboard
@@ -48,7 +78,7 @@ class DiscPy:
 	
 	def __resume_json(self):
 		return json.dumps({
-			'op': OpCodes.RESUME,
+			'op': self.OpCodes.RESUME,
 			'd': {
                 'seq': self.__sequence,
                 'session_id': self.__session_id,
@@ -74,7 +104,7 @@ class DiscPy:
 
 	async def update_presence(self, name, type: ActivityType, status: Status):
 		presence = {
-			'op': OpCodes.PRESENCE,
+			'op': self.OpCodes.PRESENCE,
 			'd': {
 				'since': None,
 				'activities': [{
@@ -90,7 +120,7 @@ class DiscPy:
 	async def __do_heartbeats(self, interval):
 		while True:
 			payload = {
-				'op': OpCodes.HEARTBEAT,
+				'op': self.OpCodes.HEARTBEAT,
 				'd': self.__sequence
 			}
 			await self.__socket.send(json.dumps(payload))
@@ -111,8 +141,8 @@ class DiscPy:
 						self.__sequence = recv_json['s']
 					
 					op = recv_json['op']
-					if op != OpCodes.DISPATCH:
-						if op == OpCodes.HELLO:
+					if op != self.OpCodes.DISPATCH:
+						if op == self.OpCodes.HELLO:
 							self.loop.create_task(self.__do_heartbeats(recv_json['d']['heartbeat_interval']))
 							# GUILD_MESSAGES + GUILD_MESSAGE_REACTIONS 
 							await self.__socket.send(self.__identify_json(intents=(1 << 9) | (1 << 10)))
@@ -120,17 +150,17 @@ class DiscPy:
 							if self.debug:
 								print('Sent OpCodes.IDENTIFY')
 								
-						elif op == OpCodes.HEARTBEAT_ACK:
+						elif op == self.OpCodes.HEARTBEAT_ACK:
 							if self.debug:
 								print('Got OpCodes.HEARTBEAT_ACK')
 
-						elif op == OpCodes.HEARTBEAT:
+						elif op == self.OpCodes.HEARTBEAT:
 							await self.__socket.send(self.__hearbeat_json())
 
 							if self.debug:
 								print('Forced OpCodes.HEARTBEAT')
 
-						elif op == OpCodes.RECONNECT:
+						elif op == self.OpCodes.RECONNECT:
 							if self.debug:
 								print('Got OpCodes.RECONNECT')
 
@@ -169,7 +199,7 @@ class DiscPy:
 		self.loop.run_forever()
 
 	async def __on_ready(self):
-		await self.update_presence('with stars.', ActivityType.watching, Status.do_not_disturb)
+		await self.update_presence('with stars.', self.ActivityType.WATCHING, self.Status.DND)
 
 	# maybe try to make something like commands?
 	async def __on_message(self, msg: Message):
