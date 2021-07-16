@@ -222,19 +222,25 @@ class Application:
 			self.owner_user_id = team['owner_user_id']
 
 	def __init__(self, app):
+		"""
+		in today's episode of discord is ran by monkeys:
+		https://discord.com/developers/docs/topics/gateway#ready sends a "partial application object" which "contains id and flags"
+		https://discord.com/developers/docs/resources/application#application-object says that there are 9 non optional keys
+		so now they must be test()'d because some dev decided to go against docs
+		"""
 		self.id = app['id']
-		self.name = app['name']
-		self.icon = app['icon']
-		self.description = app['description']
+		self.name = test(app, 'name')
+		self.icon = test(app, 'icon')
+		self.description = test(app, 'description')
 		self.rpc_origins = test(app, 'rpc_origins')
-		self.bot_public = app['bot_public']
-		self.bot_require_code_grant = app['bot_require_code_grant']
+		self.bot_public = test(app, 'bot_public')
+		self.bot_require_code_grant = test(app, 'bot_require_code_grant')
 		self.terms_of_service_url = test(app, 'terms_of_service_url')
 		self.privacy_policy_url = test(app, 'privacy_policy_url')
 		self.owner = User(app['owner']) if test(app, 'owner') else None
-		self.summary = app['summary']
-		self.verify_key = app['verify_key']
-		self.team = self.__Team(app['team']) if app['team'] else None
+		self.summary = test(app, 'summary')
+		self.verify_key = test(app, 'verify_key')
+		self.team = self.__Team(app['team']) if test(app, 'team') else None
 		self.guild_id = test(app, 'guild_id')
 		self.primary_sku_id = test(app, 'primary_sku_id')
 		self.slug = test(app, 'slug')

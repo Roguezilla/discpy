@@ -6,7 +6,7 @@ import asyncio
 import json
 import platform
 
-from reaction_events import ReactionAddEvent
+from events import ReactionAddEvent, ReadyEvent
 from message import Message
 
 class DiscPy:
@@ -163,7 +163,8 @@ class DiscPy:
 		self.__BASE_API_URL = 'https://discord.com/api/v9'
 
 		self.__sequence = None
-		self.__session_id = None
+
+		self.bot: ReadyEvent = None
 
 		self.debug = 1
 
@@ -201,7 +202,7 @@ class DiscPy:
 			'op': self.OpCodes.RESUME,
 			'd': {
 				'seq': self.__sequence,
-				'session_id': self.__session_id,
+				'session_id': self.bot.session_id,
 				'token': self.__token
 			}
 		})
@@ -214,6 +215,9 @@ class DiscPy:
 
 	def is_command(self, start):
 		return start in self.__commands
+
+	def register_event(self, event: Callable):
+		setattr(self, event.__name__, event)
 
 	def send_message(self, channel_id, content = '', embed = None):		
 		if not content and not embed:
@@ -300,15 +304,20 @@ class DiscPy:
 						if event == 'READY':
 							self.__log('READY')
 
-							self.__session_id = recv_json['d']['session_id']
+							self.bot = ReadyEvent(recv_json['d'])
 
-							await self.__on_ready()
+							if hasattr(self, 'on_ready'):
+								await getattr(self, 'on_ready')(self, self.bot)
+						
 						elif event == 'RESUMED':
 							self.__log('RESUMED')
+
 						elif event == 'MESSAGE_CREATE':
 							await self.__on_message(Message(recv_json['d']))
+
 						elif event == 'MESSAGE_REACTION_ADD':
-							await self.__on_reaction_add(ReactionAddEvent(recv_json['d']))
+							if hasattr(self, 'on_reaction_add'):
+								await getattr(self, 'on_reaction_add')(self, ReactionAddEvent(recv_json['d']))
 
 					if self.debug:
 						print(f'Sequence: {self.__sequence}')
@@ -320,16 +329,10 @@ class DiscPy:
 		self.loop.create_task(self.__process_payloads())
 		self.loop.run_forever()
 
-	async def __on_ready(self):
-		await self.update_presence('with stars.', self.ActivityType.WATCHING, self.Status.DND)
-
-	async def __on_message(self, msg: Message):
-		print(f'-Author: {msg.author.username}\n-Content: {msg.content}')
-		
+	async def __on_message(self, msg: Message):		
 		split = msg.content.split(' ')
 		if self.is_command(split[0]):
 			await self.__commands[msg.content.split(" ")[0]](self, msg, *split[1:])
 
-	async def __on_reaction_add(self, reaction: ReactionAddEvent):
-		message = Message(self.get_message(reaction.channel_id, reaction.message_id))
-		print(f'-Emoji: {reaction.emoji.format()}\n-Count: {message.get_reaction(reaction.emoji).count}')
+		if hasattr(self, 'on_message'):
+			await getattr(self, 'on_message')(self, msg)

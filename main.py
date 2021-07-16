@@ -4,10 +4,27 @@ from dotenv import load_dotenv
 
 from discpy import DiscPy
 from embeds import EmbedBuilder
+from events import ReactionAddEvent, ReadyEvent
 
 load_dotenv()
 
 bot = DiscPy(os.getenv('TOKEN'), ',')
+
+@bot.register_event
+async def on_ready(self: DiscPy, ready: ReadyEvent):
+		await self.update_presence('with stars.', self.ActivityType.WATCHING, self.Status.DND)
+
+@bot.register_event
+async def on_message(self: DiscPy, msg: Message):
+	print(f'-Author: {msg.author.username}\n-Content: {msg.content}')
+
+	if msg.content == 'poggers':
+		self.send_message(msg.channel_id, 'poggers indeed')
+
+@bot.register_event
+async def on_reaction_add(self, reaction: ReactionAddEvent):
+		message = Message(self.get_message(reaction.channel_id, reaction.message_id))
+		print(f'-Emoji: {reaction.emoji.format()}\n-Count: {message.get_reaction(reaction.emoji).count}')
 
 @bot.command()
 async def ping(self: DiscPy, msg: Message):
