@@ -277,6 +277,78 @@ class MessageInteraction:
             for component in interaction['components']:
                 self.components.append(Component(component))
 
+class PermissionOverwrite:
+    def __init__(self, overwrite):
+        self.id = overwrite['id']
+        self.type = overwrite['type']
+        self.allow = overwrite['allow']
+        self.deny = overwrite['deny']
+
+class ThreadMetadata:
+    def __init__(self, metadata):
+        self.archived = metadata['archived']
+        self.auto_archive_duration = metadata['auto_archive_duration']
+        self.archive_timestamp = datetime.fromisoformat(metadata['archive_timestamp'])
+        self.locked = test(metadata, 'locked')
+
+class ThreadMember:
+    def __init__(self, member):
+        self.id = test(member, 'id')
+        self.user_id = test(member, 'user_id')
+        self.join_timestamp = datetime.fromisoformat(member['join_timestamp'])
+        self.flags = member['flags']
+
+class TextChannel:
+    def __init__(self, channel):
+        self.id = channel['id']
+        self.type = channel['type']
+        self.guild_id = test(channel, 'channel')
+        self.position = test(channel, 'position')
+        
+        self.permission_overwrites: List[PermissionOverwrite] = []
+        if test(channel, 'permission_overwrites'):
+            for overwrite in channel['permission_overwrites']:
+                self.permission_overwrites.append(PermissionOverwrite(overwrite))
+
+        self.name = test(channel, 'name')
+        self.topic = test(channel, 'topic')
+        self.nsfw = test(channel, 'nsfw')
+        self.last_message_id = test(channel, 'last_message_id')
+        self.bitrate = test(channel, 'bitrate')
+        self.user_limit = test(channel, 'user_limit')
+        self.rate_limit_per_user = test(channel, 'rate_limit_per_user')
+
+        self.recipients: List[User] = []
+        if test(channel, 'recipients'):
+            for recipient in channel['recipients']:
+                self.recipients.append(User(recipient))
+
+        self.icon = test(channel, 'icon')
+        self.owner_id = test(channel, 'owner_id')
+        self.application_id = test(channel, 'application_id')
+        self.parent_id = test(channel, 'parent_id')
+        self.last_pin_timestamp = datetime.fromisoformat(channel['timestamp']) if test(channel, 'last_pin_timestamp') else None
+        self.rtc_region = test(channel, 'rtc_region')
+        self.video_quality_mode = test(channel, 'video_quality_mode')
+        self.message_count = test(channel, 'message_count')
+        self.member_count = test(channel, 'member_count')
+
+        self.thread_metadata = ThreadMetadata(channel['thread_metadata']) if test(channel, 'thread_metadata') else None
+        self.member = ThreadMember(channel['member']) if test(channel, 'member') else None
+
+        self.default_auto_archive_duration = test(channel, 'default_auto_archive_duration')
+
+class StickerItem:
+    class Type:
+        PNG = 1
+        APNG = 2
+        LOTTIE = 3
+
+    def __init__(self, item):
+        self.id = item['id']
+        self.name = item['name']
+        self.format_type: self.Type = item['format_type']
+
 class Message:
     def __init__(self, msg):
         self.id = msg['id']
@@ -328,15 +400,19 @@ class Message:
         
         self.interaction = MessageInteraction(msg['interaction']) if test(msg, 'interaction') else None
 
-        self.thread = 0
+        self.thread = TextChannel(msg['thread']) if test(msg, 'thread') else None
 
         self.components: List[Component] = []
         if test(msg, 'components'):
             for component in msg['components']:
                 self.components.append(Component(component))
 
-        self.sticker_items = 0
-        self.stickers = 0
+        self.sticker_items: List[StickerItem] = []
+        if test(msg, 'sticker_items'):
+            for sticker_item in msg['sticker_items']:
+                self.sticker_items.append(StickerItem(sticker_item))
+
+        self.stickers = 'DEPRECATED'
 
     def get_reaction(self, emoji: Emoji) -> Reaction:
         for reaction in self.reactions:
