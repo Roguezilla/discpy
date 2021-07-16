@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List
 
 def test(dict, key):
-    return dict[key] if key in dict else None
+    return None if not dict else dict[key] if key in dict else None
 
 class User:
     def __init__(self, user):
@@ -30,17 +30,29 @@ class User:
         self.premium_type = test(user, 'premium_type')
         self.public_flags = test(user, 'public_flags')
 
+    def mention(self):
+        if self.id:
+            return f'<@{self.id}>'
+
+        return ''
+
 class Member(User):
     def __init__(self, user, member):
         super().__init__(user)
 
+        """
+        DISCORD IS CODED BY MONKEYS, so we have to run test() on all keys instead of only like 4
+        why? well, read ** of https://discord.com/developers/docs/resources/channel#message-object
+        """
+
         self.nick = test(member, 'nick')
-        self.roles = member['roles']
-        self.joined_at = datetime.fromisoformat(member['joined_at'])
-        # according to the api premium_since is premium_since? and its format is "?ISO8601 timestamp" which means it can exist and be None(a value not accepted by fromisoformat)
+        self.roles = test(member, 'roles')
+        self.joined_at = datetime.fromisoformat(member['joined_at']) if test(member, 'joined_at') else None
+        # premium is an optional_and_nullable_field
+        # https://discord.com/developers/docs/reference#nullable-and-optional-resource-fields-example-nullable-and-optional-fields
         self.premium_since = datetime.fromisoformat(member['premium_since']) if (test(member, 'premium_since') and member['premium_since']) else None
-        self.deaf = member['deaf']
-        self.mute = member['mute']
+        self.deaf = test(member, 'deaf')
+        self.mute = test(member, 'mute')
         self.pending = test(member, 'pending')
         self.permissions = test(member, 'permissions')
 
@@ -61,6 +73,9 @@ class Role:
         self.managed = mention_roles['managed']
         self.mentionable = mention_roles['mentionable']
         self.tags = self.RoleTags(mention_roles['tags']) if test(mention_roles, 'tags') else None
+
+    def mention(self):
+        return f'<@&{self.id}>'
 
 class ChannelMention:
     def __init__(self, mention_channels):
@@ -162,7 +177,8 @@ class Emoji:
         self.available = test(emoji, 'available')
 
     def format(self):
-        return f'<:{self.name}:{self.id}>'
+        animated_prefix = 'a' if self.animated else ''
+        return f'<{animated_prefix}:{self.name}:{self.id}>'
 
     def __eq__(self, o):
         return self.id == o.id and self.name == o.name
@@ -351,6 +367,7 @@ class StickerItem:
 
 class Message:
     def __init__(self, msg):
+        print(msg)
         self.id = msg['id']
         self.channel_id = msg['channel_id']
         self.guild_id = test(msg, 'guild_id')
@@ -411,8 +428,6 @@ class Message:
         if test(msg, 'sticker_items'):
             for sticker_item in msg['sticker_items']:
                 self.sticker_items.append(StickerItem(sticker_item))
-
-        self.stickers = 'DEPRECATED'
 
     def get_reaction(self, emoji: Emoji) -> Reaction:
         for reaction in self.reactions:

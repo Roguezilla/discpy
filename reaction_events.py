@@ -5,6 +5,6 @@ class ReactionAddEvent:
         self.user_id = event['user_id']
         self.message_id = event['message_id']
         self.author = Member(event['member']['user'], event['member'])
-        self.emoji = Emoji(event['emoji']['id'], event['emoji']['name'])
+        self.emoji = Emoji(event['emoji'])
         self.channel_id = event['channel_id']
         self.guild_id = event['guild_id']
