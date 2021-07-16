@@ -210,6 +210,7 @@ class DiscPy:
 	def register_command(self):
 		def decorator(func: Callable):
 			self.__commands[f'{self.__prefix}{func.__name__}'] = func
+			self.__log(f'Registed command: {func.__name__}')
 
 		return decorator
 
@@ -218,6 +219,7 @@ class DiscPy:
 
 	def register_event(self, event: Callable):
 		setattr(self, event.__name__, event)
+		self.__log(f'Registed event: {event.__name__}')
 
 	async def update_presence(self, name, type: ActivityType, status: Status):
 		presence = {
