@@ -1,14 +1,13 @@
 from json.decoder import JSONDecodeError
+from typing import Callable
 import requests
 import websockets
 import asyncio
 import json
 import platform
-from typing import Dict
 
 from reaction_events import ReactionAddEvent
 from message import Message
-from embeds import EmbedBuilder
 
 class DiscPy:
 	class OpCodes:
@@ -156,8 +155,9 @@ class DiscPy:
 		- TYPING_START
 		"""
 
-	def __init__(self, token):
+	def __init__(self, token, prefix):
 		self.__token = token
+		self.__prefix = prefix
 		self.loop = asyncio.get_event_loop()
 		self.__socket = None
 		self.__BASE_API_URL = 'https://discord.com/api/v9'
@@ -166,6 +166,8 @@ class DiscPy:
 		self.__session_id = None
 
 		self.debug = 1
+
+		self.__commands = {}
 
 	def __get_gateway(self):
 		return requests.get(url = self.__BASE_API_URL + '/gateway', headers = { 'Authorization': f'Bot {self.__token}' }).json()['url'] + '/?v=9&encoding=json'
@@ -203,6 +205,15 @@ class DiscPy:
 				'token': self.__token
 			}
 		})
+
+	def command(self):
+		def decorator(func: Callable):
+			self.__commands[f'{self.__prefix}{func.__name__}'] = func
+
+		return decorator
+
+	def is_command(self, start):
+		return start in self.__commands
 
 	def send_message(self, channel_id, content = '', embed = None):		
 		if not content and not embed:
@@ -312,24 +323,12 @@ class DiscPy:
 	async def __on_ready(self):
 		await self.update_presence('with stars.', self.ActivityType.WATCHING, self.Status.DND)
 
-	# maybe try to make something like commands?
 	async def __on_message(self, msg: Message):
 		print(f'-Author: {msg.author.username}\n-Content: {msg.content}')
-
-		if msg.content.startswith(',ping'):
-			self.send_message(msg.channel_id, content='Pong.')
-
-		if msg.content.startswith(',embed'):
-			embed = EmbedBuilder(title='Title', description='Description.', url='https://www.google.com/', color=0xffcc00)
-			embed.set_author(name='rogue', url='https://www.google.com/', icon_url='https://cdn.discordapp.com/emojis/700809695933497355.gif')
-			embed.set_image(url='https://cdn.discordapp.com/emojis/700809695933497355.gif')
-			embed.set_thumbnail(url='https://cdn.discordapp.com/emojis/700809695933497355.gif')
-			embed.set_footer(text='by rogue#0001', icon_url='https://cdn.discordapp.com/emojis/700809695933497355.gif')
-			embed.add_field(name='yes', value='<#777251828743143424>', inline=True)
-			embed.add_field(name='no', value='no', inline=True)
-			embed.add_field(name='maybe', value='<@212149701535989760>', inline=False)
-
-			self.send_message(msg.channel_id, embed=embed.embed_dict)
+		
+		split = msg.content.split(' ')
+		if self.is_command(split[0]):
+			await self.__commands[msg.content.split(" ")[0]](self, msg, *split[1:])
 
 	async def __on_reaction_add(self, reaction: ReactionAddEvent):
 		message = Message(self.get_message(reaction.channel_id, reaction.message_id))
