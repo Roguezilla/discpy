@@ -176,14 +176,18 @@ class Emoji:
 		self.animated = test(emoji, 'animated')
 		self.available = test(emoji, 'available')
 
-	def format(self):
+	def __str__(self):
+		# default emoji stuff
+		if self.id == None:
+			return self.name
+
 		animated_prefix = 'a' if self.animated else ''
 		return f'<{animated_prefix}:{self.name}:{self.id}>'
 
 	def __eq__(self, o):
 		return self.id == o.id and self.name == o.name
 
-class Reaction:
+class 	Reaction:
 	def __init__(self, reaction):
 		self.count = reaction['count']
 		self.me = reaction['me']

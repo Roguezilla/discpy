@@ -219,22 +219,6 @@ class DiscPy:
 	def register_event(self, event: Callable):
 		setattr(self, event.__name__, event)
 
-	def send_message(self, channel_id, content = '', embed = None):		
-		if not content and not embed:
-			return
-
-		return requests.post(
-			self.__BASE_API_URL + f'/channels/{channel_id}/messages',
-			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' },
-			data = json.dumps ( {'content': content, 'embeds': [embed] if embed else None} )
-		)
-
-	def get_message(self, channel_id, message_id):
-		return requests.get(
-			self.__BASE_API_URL + f'/channels/{channel_id}/messages/{message_id}',
-			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
-		).json()
-
 	async def update_presence(self, name, type: ActivityType, status: Status):
 		presence = {
 			'op': self.OpCodes.PRESENCE,
@@ -275,6 +259,7 @@ class DiscPy:
 					
 					op = recv_json['op']
 					if op != self.OpCodes.DISPATCH:
+						print(f'OpCode: {op}')
 						if op == self.OpCodes.HELLO:
 							self.loop.create_task(self.__do_heartbeats(recv_json['d']['heartbeat_interval']))
 							# GUILD_MESSAGES + GUILD_MESSAGE_REACTIONS 
@@ -331,8 +316,24 @@ class DiscPy:
 
 	async def __on_message(self, msg: Message):		
 		split = msg.content.split(' ')
-		if self.is_command(split[0]):
+		if self.is_command(split[0]) and msg.author.id != self.bot.user.id:
 			await self.__commands[msg.content.split(" ")[0]](self, msg, *split[1:])
 
 		if hasattr(self, 'on_message'):
 			await getattr(self, 'on_message')(self, msg)
+
+	def send_message(self, channel_id, content = '', embed = None):		
+		if not content and not embed:
+			return
+
+		return requests.post(
+			self.__BASE_API_URL + f'/channels/{channel_id}/messages',
+			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' },
+			data = json.dumps ( {'content': content, 'embeds': [embed] if embed else None} )
+		)
+
+	def get_message(self, channel_id, message_id):
+		return requests.get(
+			self.__BASE_API_URL + f'/channels/{channel_id}/messages/{message_id}',
+			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
+		).json()

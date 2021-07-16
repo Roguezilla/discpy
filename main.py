@@ -1,17 +1,20 @@
-from message import Message
 import os
 from dotenv import load_dotenv
 
 from discpy import DiscPy
+from message import Message
 from embeds import EmbedBuilder
 from events import ReactionAddEvent, ReadyEvent
+from stardb import StarDB
 
 load_dotenv()
 
 bot = DiscPy(os.getenv('TOKEN'), ',')
+db = StarDB('db.db')
 
 @bot.register_event
 async def on_ready(self: DiscPy, ready: ReadyEvent):
+		print(f'->Logged in as {ready.user.username}')
 		await self.update_presence('with stars.', self.ActivityType.WATCHING, self.Status.DND)
 
 @bot.register_event
@@ -23,8 +26,18 @@ async def on_message(self: DiscPy, msg: Message):
 
 @bot.register_event
 async def on_reaction_add(self, reaction: ReactionAddEvent):
+	if not db.get_server(reaction.guild_id) or db.is_archived(reaction.guild_id, reaction.channel_id, reaction.message_id):
+		return
+
+	if db.get_server(reaction.guild_id)['archive_emote'] == str(reaction.emoji):
 		message = Message(self.get_message(reaction.channel_id, reaction.message_id))
-		print(f'-Emoji: {reaction.emoji.format()}\n-Count: {message.get_reaction(reaction.emoji).count}')
+		
+		emote_match = list(filter(lambda r: str(r.emoji) == db.get_server(reaction.guild_id)['archive_emote'], message.reactions))
+		channel_count = db.get_custom_count(reaction.guild_id, reaction.channel_id)
+		needed_count = channel_count['amount'] if channel_count else db.get_server(reaction.guild_id)['archive_emote_amount']
+		
+		if emote_match and emote_match[0].count >= needed_count:
+			print('hai!')
 
 @bot.register_command()
 async def ping(self: DiscPy, msg: Message):
