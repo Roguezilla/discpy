@@ -207,7 +207,7 @@ class DiscPy:
 			}
 		})
 
-	def command(self):
+	def register_command(self):
 		def decorator(func: Callable):
 			self.__commands[f'{self.__prefix}{func.__name__}'] = func
 

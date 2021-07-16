@@ -225,7 +225,7 @@ class Application:
 		"""
 		in today's episode of discord is ran by monkeys:
 		https://discord.com/developers/docs/topics/gateway#ready sends a "partial application object" which "contains id and flags"
-		https://discord.com/developers/docs/resources/application#application-object says that there are 9 non optional keys
+		https://discord.com/developers/docs/resources/application#application-object says that there are 8(?) non optional keys
 		so now they must be test()'d because some dev decided to go against docs
 		"""
 		self.id = app['id']

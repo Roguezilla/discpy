@@ -26,11 +26,11 @@ async def on_reaction_add(self, reaction: ReactionAddEvent):
 		message = Message(self.get_message(reaction.channel_id, reaction.message_id))
 		print(f'-Emoji: {reaction.emoji.format()}\n-Count: {message.get_reaction(reaction.emoji).count}')
 
-@bot.command()
+@bot.register_command()
 async def ping(self: DiscPy, msg: Message):
 	self.send_message(msg.channel_id, 'Pong.')
 
-@bot.command()
+@bot.register_command()
 async def embed(self: DiscPy, msg: Message):
 	embed = EmbedBuilder(title='Title', description='Description.', url='https://www.google.com/', color=0xffcc00)
 	embed.set_author(name='rogue', url='https://www.google.com/', icon_url='https://cdn.discordapp.com/emojis/700809695933497355.gif')
