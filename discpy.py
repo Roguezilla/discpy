@@ -7,7 +7,7 @@ import json
 import platform
 
 from events import ReactionAddEvent, ReadyEvent
-from message import Message
+from message import Message, User
 
 class DiscPy:
 	class OpCodes:
@@ -207,12 +207,9 @@ class DiscPy:
 			}
 		})
 
-	def register_command(self):
-		def decorator(func: Callable):
-			self.__commands[f'{self.__prefix}{func.__name__}'] = func
-			self.__log(f'Registed command: {func.__name__}')
-
-		return decorator
+	def register_command(self, func):
+		self.__commands[f'{self.__prefix}{func.__name__}'] = func
+		self.__log(f'Registed command: {func.__name__}')
 
 	def is_command(self, start):
 		return start in self.__commands
@@ -261,14 +258,12 @@ class DiscPy:
 					
 					op = recv_json['op']
 					if op != self.OpCodes.DISPATCH:
-						print(f'OpCode: {op}')
 						if op == self.OpCodes.HELLO:
 							self.loop.create_task(self.__do_heartbeats(recv_json['d']['heartbeat_interval']))
-							# GUILD_MESSAGES + GUILD_MESSAGE_REACTIONS 
+
 							await self.__socket.send(self.__identify_json(intents=self.Intents.GUILD_MESSAGES | self.Intents.GUILD_MESSAGE_REACTIONS))
 								
-							if self.debug:
-								print('Sent OpCodes.IDENTIFY')
+							self.__log('Sent OpCodes.IDENTIFY')
 								
 						elif op == self.OpCodes.HEARTBEAT_ACK:
 							self.__log('Got OpCodes.HEARTBEAT_ACK')
@@ -306,8 +301,7 @@ class DiscPy:
 							if hasattr(self, 'on_reaction_add'):
 								await getattr(self, 'on_reaction_add')(self, ReactionAddEvent(recv_json['d']))
 
-					if self.debug:
-						print(f'Sequence: {self.__sequence}')
+					self.__log(f'Sequence: {self.__sequence}')
 
 				except JSONDecodeError:
 					print('JSONDecodeError')
@@ -316,7 +310,7 @@ class DiscPy:
 		self.loop.create_task(self.__process_payloads())
 		self.loop.run_forever()
 
-	async def __on_message(self, msg: Message):		
+	async def __on_message(self, msg: Message):
 		split = msg.content.split(' ')
 		if self.is_command(split[0]) and msg.author.id != self.bot.user.id:
 			await self.__commands[msg.content.split(" ")[0]](self, msg, *split[1:])
@@ -324,18 +318,30 @@ class DiscPy:
 		if hasattr(self, 'on_message'):
 			await getattr(self, 'on_message')(self, msg)
 
-	def send_message(self, channel_id, content = '', embed = None):		
-		if not content and not embed:
-			return
+	def send_message(self, channel_id, content = '', embed = None):
+		data = {}
+		if content:
+			data['content'] = content
+		
+		if embed:
+			data['embeds'] = [embed]
 
-		return requests.post(
+		sent = requests.post(
 			self.__BASE_API_URL + f'/channels/{channel_id}/messages',
 			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' },
-			data = json.dumps ( {'content': content, 'embeds': [embed] if embed else None} )
+			data = json.dumps(data)
 		)
 
-	def get_message(self, channel_id, message_id):
-		return requests.get(
+		return Message(sent.json()) if sent else None
+
+	def fetch_message(self, channel_id, message_id) -> Message:
+		return Message(requests.get(
 			self.__BASE_API_URL + f'/channels/{channel_id}/messages/{message_id}',
 			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
-		).json()
+		).json())
+
+	def fetch_user(self, user_id) -> User:
+		return User(requests.get(
+			self.__BASE_API_URL + f'/users/{user_id}',
+			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
+		).json())

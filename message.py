@@ -94,6 +94,7 @@ class Attachment:
 		self.proxy_url = attachment['proxy_url']
 		self.width = test(attachment, 'width')
 		self.height = test(attachment, 'height')
+		self.is_spoiler = self.filename.startswith('SPOILER_')
 
 class Embed:
 	class __Footer:
