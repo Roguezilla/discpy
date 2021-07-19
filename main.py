@@ -6,11 +6,17 @@ from discpy import DiscPy
 from message import Message
 from events import ReactionAddEvent, ReadyEvent
 from starboard.main import Starboard
+from starboard.main import Reddit
+from starboard.main import Instagram
 
 load_dotenv()
 
 bot = DiscPy(os.getenv('TOKEN'), ',')
 sb = Starboard('db.db')
+
+ig = Instagram(bot, sb.db)
+reddit = Reddit(bot, sb.db)
+
 exceptions = dict()
 
 """
@@ -23,11 +29,14 @@ async def on_ready(self: DiscPy, ready: ReadyEvent):
 
 @bot.register_event
 async def on_message(self: DiscPy, msg: Message):
-	pass
+	await ig.on_message(self, msg)
+	await reddit.on_message(self, msg)
 
 @bot.register_event
 async def on_reaction_add(self: DiscPy, reaction: ReactionAddEvent):
 	await sb.on_reaction_add(self, reaction)
+	await ig.on_reaction_add(self, reaction)
+	await reddit.on_reaction_add(self, reaction)
 
 """
 Commands

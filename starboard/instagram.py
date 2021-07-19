@@ -60,8 +60,8 @@ class Instagram:
 			ret = data['display_url']
 		return ret
 
-	async def on_message(self, msg: Message):
+	async def on_message(self, bot: DiscPy, msg: Message):
 		pass
 
-	async def on_reaction_add(self, reaction: ReactionAddEvent):
+	async def on_reaction_add(self, bot: DiscPy, reaction: ReactionAddEvent):
 		pass

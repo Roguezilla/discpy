@@ -15,10 +15,10 @@ from starboard.instagram import Instagram
 
 class Starboard:
 	def __init__(self, db) -> None:
-		self.__db = dataset.connect(f'sqlite:///{db}')
+		self.db = dataset.connect(f'sqlite:///{db}')
 		self.__exceptions = dict()
-		self.__twitter_auth = OAuth1(self.__db['twitter'].find_one(name='api_key')['value'], self.__db['twitter'].find_one(name='api_secret')['value'],
-									self.__db['twitter'].find_one(name='access_token')['value'], self.__db['twitter'].find_one(name='access_token_secret')['value'])
+		self.__twitter_auth = OAuth1(self.db['twitter'].find_one(name='api_key')['value'], self.db['twitter'].find_one(name='api_secret')['value'],
+									self.db['twitter'].find_one(name='access_token')['value'], self.db['twitter'].find_one(name='access_token_secret')['value'])
 
 	async def on_reaction_add(self, bot: DiscPy, reaction: ReactionAddEvent):
 		if not self.__get_server(reaction.guild_id) or self.__is_archived(reaction.guild_id, reaction.channel_id, reaction.message_id):
@@ -36,13 +36,13 @@ class Starboard:
 				await self.__do_archival(bot, message)
 
 	def __get_server(self, id):
-		return self.__db['server'].find_one(server_id = id)
+		return self.db['server'].find_one(server_id = id)
 
 	def __get_custom_count(self, server_id, channel_id):
-		return self.__db['custom_count'].find_one(server_id = server_id, channel_id = channel_id)
+		return self.db['custom_count'].find_one(server_id = server_id, channel_id = channel_id)
 
 	def __is_archived(self, server_id, channel_id, message_id):
-		return self.__db['ignore_list'].find_one(server_id = server_id, channel_id = channel_id, message_id = message_id)
+		return self.db['ignore_list'].find_one(server_id = server_id, channel_id = channel_id, message_id = message_id)
 
 	async def __do_archival(self, bot: DiscPy, msg: Message):
 		embed_info = await self.__build_info(msg)
@@ -72,7 +72,7 @@ class Starboard:
 		if embed_info['flag'] == 'video':
 			bot.send_message(channel_id=self.__get_server(msg.guild_id)['archive_channel'], content=embed_info['image_url'])
 
-		self.__db['ignore_list'].insert(dict(server_id = msg.guild_id, channel_id = msg.channel_id, message_id = msg.id))
+		self.db['ignore_list'].insert(dict(server_id = msg.guild_id, channel_id = msg.channel_id, message_id = msg.id))
 
 	async def __build_info(self, msg: Message):
 		info = {}

@@ -18,7 +18,7 @@ class User:
 		self.id = test(user, 'id')
 		self.discriminator = test(user, 'discriminator')
 		# due to the bruh moment by discord from above we need to check if avatar actually exists instead of just checking if it's not None
-		self.avatar_url = f'https://cdn.discordapp.com/avatars/{self.id}/{user["avatar"]}' if (self.id and test(user, 'avatar') and user['avatar']) else None
+		self.avatar_url = f'https://cdn.discordapp.com/avatars/{self.id}/{user["avatar"]}' if (self.id and test(user, 'avatar')) else None
 
 		self.bot = test(user, 'bot')
 		self.system = test(user, 'system')
@@ -30,11 +30,7 @@ class User:
 		self.premium_type = test(user, 'premium_type')
 		self.public_flags = test(user, 'public_flags')
 
-	def mention(self):
-		if self.id:
-			return f'<@{self.id}>'
-
-		return ''
+		self.mention = f'<@{self.id}>' if self.id else ''
 
 class Member(User):
 	def __init__(self, user, member):
@@ -50,7 +46,7 @@ class Member(User):
 		self.joined_at = datetime.fromisoformat(member['joined_at']) if test(member, 'joined_at') else None
 		# premium is an optional_and_nullable_field
 		# https://discord.com/developers/docs/reference#nullable-and-optional-resource-fields-example-nullable-and-optional-fields
-		self.premium_since = datetime.fromisoformat(member['premium_since']) if (test(member, 'premium_since') and member['premium_since']) else None
+		self.premium_since = datetime.fromisoformat(member['premium_since']) if test(member, 'premium_since') else None
 		self.deaf = test(member, 'deaf')
 		self.mute = test(member, 'mute')
 		self.pending = test(member, 'pending')
@@ -74,8 +70,7 @@ class Role:
 		self.mentionable = mention_roles['mentionable']
 		self.tags = self.RoleTags(mention_roles['tags']) if test(mention_roles, 'tags') else None
 
-	def mention(self):
-		return f'<@&{self.id}>'
+		self.mention = f'<@&{self.id}>'
 
 class ChannelMention:
 	def __init__(self, mention_channels):
