@@ -94,46 +94,46 @@ class Attachment:
 		self.is_spoiler = self.filename.startswith('SPOILER_')
 
 class Embed:
-	class Footer:
+	class __Footer:
 		def __init__(self, footer):
 			self.text = footer['text']
 			self.icon_url = test(footer, 'icon_url')
 			self.proxy_icon_url = test(footer, 'proxy_icon_url')
 
-	class Image:
+	class __Image:
 		def __init__(self, image):
 			self.url = test(image, 'url')
 			self.proxy_url = test(image, 'proxy_icon_url')
 			self.height = test(image, 'height')
 			self.width = test(image, 'width')
 
-	class Thumbnail:
+	class __Thumbnail:
 		def __init__(self, thumbnail):
 			self.url = test(thumbnail, 'url')
 			self.proxy_url = test(thumbnail, 'proxy_icon_url')
 			self.height = test(thumbnail, 'height')
 			self.width = test(thumbnail, 'width')
 
-	class Video:
+	class __Video:
 		def __init__(self, video):
 			self.url = test(video, 'url')
 			self.proxy_url = test(video, 'proxy_icon_url')
 			self.height = test(video, 'height')
 			self.width = test(video, 'width')
 
-	class Provider:
+	class __Provider:
 		def __init__(self, provider):
 			self.name = test(provider, 'name')
 			self.url = test(provider, 'url')
 
-	class Author:
+	class __Author:
 		def __init__(self, author):
 			self.name = test(author, 'name')
 			self.url = test(author, 'url')
 			self.icon_url = test(author, 'icon_url')
 			self.proxy_icon_url = test(author, 'proxy_icon_url')
 
-	class Field:
+	class __Field:
 		def __init__(self, field):
 			self.name = field['name']
 			self.value = field['value']
@@ -146,32 +146,32 @@ class Embed:
 		self.url = url if url else test(embed, 'url')
 		self.timestamp = datetime.fromisoformat(embed['timestamp']) if test(embed, 'timestamp') else None
 		self.color = color if color else test(embed, 'color')
-		self.footer = self.Footer(embed['footer']) if test(embed, 'footer') else None
-		self.image = self.Image(embed['image']) if test(embed, 'image') else None
-		self.thumbnail = self.Thumbnail(embed['thumbnail']) if test(embed, 'thumbnail') else None
-		self.video = self.Video(embed['video']) if test(embed, 'video') else None
-		self.provider = self.Provider(embed['provider']) if test(embed, 'provider') else None
-		self.author = self.Author(embed['author']) if test(embed, 'author') else None
+		self.footer = self.__Footer(embed['footer']) if test(embed, 'footer') else None
+		self.image = self.__Image(embed['image']) if test(embed, 'image') else None
+		self.thumbnail = self.__Thumbnail(embed['thumbnail']) if test(embed, 'thumbnail') else None
+		self.video = self.__Video(embed['video']) if test(embed, 'video') else None
+		self.provider = self.__Provider(embed['provider']) if test(embed, 'provider') else None
+		self.author = self.__Author(embed['author']) if test(embed, 'author') else None
 		
-		self.fields: List[self.Field] = []
+		self.fields: List[self.__Field] = []
 		if test(embed, 'fields'):
 			for field in embed['fields']:
-				self.fields.append(self.Field(field))
+				self.fields.append(self.__Field(field))
 	
 	def set_footer(self, text, icon_url = ''):
-		self.footer = self.Footer( { 'text': text, 'icon_url': icon_url } )
+		self.footer = self.__Footer( { 'text': text, 'icon_url': icon_url } )
 
 	def set_image(self, url):
-		self.image = self.Image( { 'url': url } )
+		self.image = self.__Image( { 'url': url } )
 
 	def set_thumbnail(self, url):
-		self.thumbnail = self.Thumbnail( { 'url': url } )
+		self.thumbnail = self.__Thumbnail( { 'url': url } )
 	
 	def set_author(self, name = '', url = '', icon_url = ''):
-		self.author = self.Author( { 'name': name, 'url': url, 'icon_url': icon_url } )
+		self.author = self.__Author( { 'name': name, 'url': url, 'icon_url': icon_url } )
 
 	def add_field(self, name, value, inline):
-		self.fields.append( self.Field( {'name': name, 'value': value, 'inline': inline } ) )
+		self.fields.append( self.__Field( {'name': name, 'value': value, 'inline': inline } ) )
 
 	def as_json(self):
   		return json.loads(
