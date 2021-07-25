@@ -7,7 +7,7 @@ import json
 import platform
 
 from events import ReactionAddEvent, ReadyEvent
-from message import Message, User
+from message import Message, User, Reaction, Emoji
 
 class DiscPy:
 	class OpCodes:
@@ -339,6 +339,43 @@ class DiscPy:
 			self.__BASE_API_URL + f'/channels/{channel_id}/messages/{message_id}',
 			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
 		).json())
+
+	def edit_message(self, msg: Message, content = '', embed = None):
+		data = {}
+		if content:
+			data['content'] = content
+		
+		if embed:
+			data['embeds'] = [embed]
+
+		sent = requests.patch(
+			self.__BASE_API_URL + f'/channels/{msg.channel_id}/messages/{msg.id}',
+			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' },
+			data = json.dumps(data)
+		)
+
+		return Message(sent.json()) if sent else None
+
+	def delete_message(self, msg: Message) -> Message:
+		requests.delete(
+			self.__BASE_API_URL + f'/channels/{msg.channel_id}/messages/{msg.id}',
+			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
+		)
+
+	def add_reaction(self, msg: Message, emoji) -> Message:
+		def __convert(emoji):
+			if isinstance(emoji, Reaction):
+				emoji = emoji.emoji
+
+			if isinstance(emoji, Emoji):
+				return str(emoji)
+			if isinstance(emoji, str):
+				return emoji.strip('<>')
+			
+		requests.put(
+			self.__BASE_API_URL + f'/channels/{msg.channel_id}/messages/{msg.id}/reactions/{__convert(emoji)}/@me',
+			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
+		)
 
 	def fetch_user(self, user_id) -> User:
 		return User(requests.get(

@@ -8,8 +8,7 @@ from bs4 import BeautifulSoup
 
 from discpy import DiscPy
 from events import ReactionAddEvent
-from message import Message
-from embeds import EmbedBuilder
+from message import Message, Embed
 from starboard.reddit import Reddit
 from starboard.instagram import Instagram
 
@@ -45,11 +44,11 @@ class Starboard:
 		return self.db['ignore_list'].find_one(server_id = server_id, channel_id = channel_id, message_id = message_id)
 
 	async def __do_archival(self, bot: DiscPy, msg: Message):
-		embed_info = await self.__build_info(msg)
+		embed_info = await self.__build_info(bot, msg)
 		if not embed_info:
 			return
 
-		embed = EmbedBuilder(color=0xffcc00)
+		embed = Embed(color=0xffcc00)
 
 		if embed_info['custom_author']:
 			embed.set_author(name=f'{embed_info["custom_author"].username}', icon_url=f'{embed_info["custom_author"].avatar_url}')
@@ -67,14 +66,14 @@ class Starboard:
 
 		embed.set_footer(text="by rogue#0001")
 
-		bot.send_message(channel_id=self.__get_server(msg.guild_id)['archive_channel'], embed=embed.embed_dict)
+		bot.send_message(channel_id=self.__get_server(msg.guild_id)['archive_channel'], embed=embed.as_json())
 
 		if embed_info['flag'] == 'video':
 			bot.send_message(channel_id=self.__get_server(msg.guild_id)['archive_channel'], content=embed_info['image_url'])
 
 		self.db['ignore_list'].insert(dict(server_id = msg.guild_id, channel_id = msg.channel_id, message_id = msg.id))
 
-	async def __build_info(self, msg: Message):
+	async def __build_info(self, bot: DiscPy, msg: Message):
 		info = {}
 
 		def __get_id(url):
@@ -216,8 +215,8 @@ class Starboard:
 							set_info(
 								'image',
 								'\n'.join(content[1:]) if len(content) > 1 else '',
-								msg.embeds[0].image.__getattribute__('url'),
-								await self.fetch_user(int(msg.embeds[0].fields[0].__dict__['value'][2:len(msg.embeds[0].fields[0].__dict__['value'])-1]))
+								msg.embeds[0].image.url,
+								bot.fetch_user(int(msg.embeds[0].fields[0].__dict__['value'][2:len(msg.embeds[0].fields[0].__dict__['value'])-1]))
 							)
 					else:
 						set_info(

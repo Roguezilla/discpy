@@ -1,3 +1,4 @@
+import re
 from requests import get
 
 from discpy import DiscPy
@@ -50,7 +51,7 @@ class Instagram:
 	@staticmethod
 	def return_link(url, msg=None):
 		data = Instagram.url_data(url)
-		# only galeries have media_metadata
+		# only galeries have edge_sidecar_to_children
 		if 'edge_sidecar_to_children' in data:
 			# thankfully edge_sidecar_to_children has the images in the right order
 			ret = data['edge_sidecar_to_children']['edges'][0]['node']['display_url']
@@ -61,7 +62,13 @@ class Instagram:
 		return ret
 
 	async def on_message(self, bot: DiscPy, msg: Message):
-		pass
+		if msg.author.bot:
+			return
+
+		if self.db['server'].find_one(server_id = msg.guild_id)['instagram_embed'] == 1:
+			url = re.findall(r"(\|{0,2}<?[<|]*(?:https?):(?://)+(?:[\w\d_.~\-!*'();:@&=+$,/?#[\]]*)\|{0,2}>?)", msg.content)
+			if url and 'instagram.com/p/' in url[0] and not (url[0].startswith('<') and url[0].endswith('>')) and not (url[0].startswith('||') and url[0].endswith('||')):
+				pass
 
 	async def on_reaction_add(self, bot: DiscPy, reaction: ReactionAddEvent):
 		pass

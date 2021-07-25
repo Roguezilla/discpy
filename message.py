@@ -1,3 +1,5 @@
+import json
+
 from datetime import datetime
 
 from typing import List
@@ -92,69 +94,89 @@ class Attachment:
 		self.is_spoiler = self.filename.startswith('SPOILER_')
 
 class Embed:
-	class __Footer:
+	class Footer:
 		def __init__(self, footer):
 			self.text = footer['text']
 			self.icon_url = test(footer, 'icon_url')
 			self.proxy_icon_url = test(footer, 'proxy_icon_url')
 
-	class __Image:
+	class Image:
 		def __init__(self, image):
 			self.url = test(image, 'url')
 			self.proxy_url = test(image, 'proxy_icon_url')
 			self.height = test(image, 'height')
 			self.width = test(image, 'width')
 
-	class __Thumbnail:
+	class Thumbnail:
 		def __init__(self, thumbnail):
 			self.url = test(thumbnail, 'url')
 			self.proxy_url = test(thumbnail, 'proxy_icon_url')
 			self.height = test(thumbnail, 'height')
 			self.width = test(thumbnail, 'width')
 
-	class __Video:
+	class Video:
 		def __init__(self, video):
 			self.url = test(video, 'url')
 			self.proxy_url = test(video, 'proxy_icon_url')
 			self.height = test(video, 'height')
 			self.width = test(video, 'width')
 
-	class __Provider:
+	class Provider:
 		def __init__(self, provider):
 			self.name = test(provider, 'name')
 			self.url = test(provider, 'url')
 
-	class __Author:
+	class Author:
 		def __init__(self, author):
 			self.name = test(author, 'name')
 			self.url = test(author, 'url')
 			self.icon_url = test(author, 'icon_url')
 			self.proxy_icon_url = test(author, 'proxy_icon_url')
 
-	class __Field:
+	class Field:
 		def __init__(self, field):
 			self.name = field['name']
 			self.value = field['value']
 			self.inline = test(field, 'inline')
 
-	def __init__(self, embed):
-		self.title = test(embed, 'title')
+	def __init__(self, embed = {}, title = '', description = '', url = '', color = None):
+		self.title = title if title else test(embed, 'title')
 		self.type = test(embed, 'type')
-		self.description = test(embed, 'description')
-		self.url = test(embed, 'url')
+		self.description = description if description else test(embed, 'description')
+		self.url = url if url else test(embed, 'url')
 		self.timestamp = datetime.fromisoformat(embed['timestamp']) if test(embed, 'timestamp') else None
-		self.color = test(embed, 'color')
-		self.footer = self.__Footer(embed['footer']) if test(embed, 'footer') else None
-		self.image = self.__Image(embed['image']) if test(embed, 'image') else None
-		self.thumbnail = self.__Thumbnail(embed['thumbnail']) if test(embed, 'thumbnail') else None
-		self.video = self.__Video(embed['video']) if test(embed, 'video') else None
-		self.provider = self.__Provider(embed['provider']) if test(embed, 'provider') else None
-		self.author = self.__Author(embed['author']) if test(embed, 'author') else None
+		self.color = color if color else test(embed, 'color')
+		self.footer = self.Footer(embed['footer']) if test(embed, 'footer') else None
+		self.image = self.Image(embed['image']) if test(embed, 'image') else None
+		self.thumbnail = self.Thumbnail(embed['thumbnail']) if test(embed, 'thumbnail') else None
+		self.video = self.Video(embed['video']) if test(embed, 'video') else None
+		self.provider = self.Provider(embed['provider']) if test(embed, 'provider') else None
+		self.author = self.Author(embed['author']) if test(embed, 'author') else None
 		
-		self.fields: List[self.__Field] = []
+		self.fields: List[self.Field] = []
 		if test(embed, 'fields'):
 			for field in embed['fields']:
-				self.fields.append(self.__Field(field))
+				self.fields.append(self.Field(field))
+	
+	def set_footer(self, text, icon_url = ''):
+		self.footer = self.Footer( { 'text': text, 'icon_url': icon_url } )
+
+	def set_image(self, url):
+		self.image = self.Image( { 'url': url } )
+
+	def set_thumbnail(self, url):
+		self.thumbnail = self.Thumbnail( { 'url': url } )
+	
+	def set_author(self, name = '', url = '', icon_url = ''):
+		self.author = self.Author( { 'name': name, 'url': url, 'icon_url': icon_url } )
+
+	def add_field(self, name, value, inline):
+		self.fields.append( self.Field( {'name': name, 'value': value, 'inline': inline } ) )
+
+	def as_json(self):
+  		return json.loads(
+    		json.dumps(self, default=lambda o: getattr(o, '__dict__', str(o)))
+  		)
 
 class Emoji:
 	def __init__(self, emoji):
