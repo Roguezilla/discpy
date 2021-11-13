@@ -52,7 +52,8 @@ class Member(User):
 		self.deaf = test(member, 'deaf')
 		self.mute = test(member, 'mute')
 		self.pending = test(member, 'pending')
-		self.permissions = test(member, 'permissions')
+		# this field is fucking useless, thanks discord!
+		self.permissions = test(member, 'permissions')	
 
 class Role:
 	class RoleTags:
@@ -61,25 +62,25 @@ class Role:
 			self.integration_id = test(tags, 'integration_id')
 			self.premium_subscriber = test(tags, 'premium_subscriber')
 
-	def __init__(self, mention_roles):
-		self.id = mention_roles['id']
-		self.name = mention_roles['name']
-		self.color = mention_roles['color']
-		self.hoist = mention_roles['hoist']
-		self.position = mention_roles['position']
-		self.permissions = mention_roles['permissions']
-		self.managed = mention_roles['managed']
-		self.mentionable = mention_roles['mentionable']
-		self.tags = self.RoleTags(mention_roles['tags']) if test(mention_roles, 'tags') else None
+	def __init__(self, role):
+		self.id = role['id']
+		self.name = role['name']
+		self.color = role['color']
+		self.hoist = role['hoist']
+		self.position = role['position']
+		self.permissions = role['permissions']
+		self.managed = role['managed']
+		self.mentionable = role['mentionable']
+		self.tags = self.RoleTags(role['tags']) if test(role, 'tags') else None
 
 		self.mention = f'<@&{self.id}>'
 
 class ChannelMention:
-	def __init__(self, mention_channels):
-		self.id = mention_channels['id']
-		self.guild_id = mention_channels['guild_id']
-		self.type = mention_channels['type']
-		self.name = mention_channels['name']
+	def __init__(self, mention_channel):
+		self.id = mention_channel['id']
+		self.guild_id = mention_channel['guild_id']
+		self.type = mention_channel['type']
+		self.name = mention_channel['name']
 
 class Attachment:
 	def __init__(self, attachment):

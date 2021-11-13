@@ -1,5 +1,5 @@
 from json.decoder import JSONDecodeError
-from typing import Callable
+from typing import Callable, List
 import requests
 import websockets
 import asyncio
@@ -7,7 +7,7 @@ import json
 import platform
 
 from events import ReactionAddEvent, ReadyEvent
-from message import Message, User, Reaction, Emoji
+from message import Message, User, Reaction, Emoji, Role, Member
 
 class DiscPy:
 	class OpCodes:
@@ -155,6 +155,47 @@ class DiscPy:
 		- TYPING_START
 		"""
 
+	class Permissions:
+		CREATE_INSTANT_INVITE = (1 << 0)
+		KICK_MEMBERS = (1 << 1)
+		BAN_MEMBERS = (1 << 2)
+		ADMINISTRATOR = (1 << 3)
+		MANAGE_CHANNELS = (1 << 4)
+		MANAGE_GUILD = (1 << 5)
+		ADD_REACTIONS = (1 << 6)
+		VIEW_AUDIT_LOG = (1 << 7)
+		PRIORITY_SPEAKER = (1 << 8)
+		STREAM = (1 << 9)
+		VIEW_CHANNEL = (1 << 10)
+		SEND_MESSAGES = (1 << 11)
+		SEND_TTS_MESSAGES = (1 << 12)
+		MANAGE_MESSAGES = (1 << 13) 
+		EMBED_LINKS = (1 << 14)
+		ATTACH_FILES = (1 << 15)
+		READ_MESSAGE_HISTORY = (1 << 16)
+		MENTION_EVERYONE = (1 << 17)
+		USE_EXTERNAL_EMOJIS = (1 << 18)
+		VIEW_GUILD_INSIGHTS = (1 << 19)
+		CONNECT = (1 << 20)
+		SPEAK = (1 << 21)
+		MUTE_MEMBERS = (1 << 22)
+		DEAFEN_MEMBERS = (1 << 23)
+		MOVE_MEMBERS = (1 << 24)
+		USE_VAD = (1 << 25)
+		CHANGE_NICKNAME = (1 << 26)
+		MANAGE_NICKNAMES = (1 << 27)
+		MANAGE_ROLES = (1 << 28)
+		MANAGE_WEBHOOKS = (1 << 29)
+		MANAGE_EMOJIS_AND_STICKERS = (1 << 30)
+		USE_APPLICATION_COMMANDS = (1 << 31)
+		REQUEST_TO_SPEAK = (1 << 32)
+		MANAGE_THREADS = (1 << 34)
+		CREATE_PUBLIC_THREADS = (1 << 35)
+		CREATE_PRIVATE_THREADS = (1 << 36)
+		USE_EXTERNAL_STICKERS = (1 << 37)
+		SEND_MESSAGES_IN_THREADS = (1 << 38)
+		START_EMBEDDED_ACTIVITIES = (1 << 39)
+
 	def __init__(self, token, prefix):
 		self.__token = token
 		self.__prefix = prefix
@@ -164,7 +205,7 @@ class DiscPy:
 
 		self.__sequence = None
 
-		self.bot: ReadyEvent = None
+		self.me: ReadyEvent = None
 
 		self.debug = 1
 
@@ -207,14 +248,14 @@ class DiscPy:
 			}
 		})
 
-	def register_command(self, func):
+	def command(self, func):
 		self.__commands[f'{self.__prefix}{func.__name__}'] = func
 		self.__log(f'Registed command: {func.__name__}')
 
 	def is_command(self, start):
 		return start in self.__commands
 
-	def register_event(self, event: Callable):
+	def event(self, event: Callable):
 		setattr(self, event.__name__, event)
 		self.__log(f'Registed event: {event.__name__}')
 
@@ -286,10 +327,10 @@ class DiscPy:
 						if event == 'READY':
 							self.__log('READY')
 
-							self.bot = ReadyEvent(recv_json['d'])
+							self.me = ReadyEvent(recv_json['d'])
 
 							if hasattr(self, 'on_ready'):
-								await getattr(self, 'on_ready')(self, self.bot)
+								await getattr(self, 'on_ready')(self, self.me)
 						
 						elif event == 'RESUMED':
 							self.__log('RESUMED')
@@ -312,13 +353,24 @@ class DiscPy:
 
 	async def __on_message(self, msg: Message):
 		split = msg.content.split(' ')
-		if self.is_command(split[0]) and msg.author.id != self.bot.user.id:
+		if self.is_command(split[0]) and msg.author.id != self.me.user.id:
 			await self.__commands[msg.content.split(" ")[0]](self, msg, *split[1:])
 
 		if hasattr(self, 'on_message'):
 			await getattr(self, 'on_message')(self, msg)
 
-	def send_message(self, channel_id, content = '', embed = None):
+	async def has_permissions(self, msg: Message, permission):
+		guild_roles = await self.fetch_roles(msg.guild_id)
+		for role in guild_roles:
+			if next((r for r in msg.author.roles if r == role.id), None) != None:
+				return (int(role.permissions) & permission) == permission
+
+		return False
+
+	async def send_message(self, channel_id, content = '', embed = None):
+		#le ratelimit implementation :trollface:
+		await asyncio.sleep(0.1)
+
 		data = {}
 		if content:
 			data['content'] = content
@@ -334,13 +386,28 @@ class DiscPy:
 
 		return Message(sent.json()) if sent else None
 
-	def fetch_message(self, channel_id, message_id) -> Message:
+	async def fetch_roles(self, guild_id) -> List[Role]:
+		await asyncio.sleep(0.1)
+
+		resp = requests.get(
+			self.__BASE_API_URL + f'/guilds/{guild_id}/roles',
+			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
+		).json()
+
+		return [Role(role) for role in resp]
+
+	async def fetch_message(self, channel_id, message_id) -> Message:
+		await asyncio.sleep(0.1)
+
 		return Message(requests.get(
 			self.__BASE_API_URL + f'/channels/{channel_id}/messages/{message_id}',
 			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
 		).json())
 
-	def edit_message(self, msg: Message, content = '', embed = None):
+	async def edit_message(self, msg: Message, content = '', embed = None):
+		#le ratelimit implementation :trollface:
+		await asyncio.sleep(0.1)
+
 		data = {}
 		if content:
 			data['content'] = content
@@ -356,13 +423,19 @@ class DiscPy:
 
 		return Message(sent.json()) if sent else None
 
-	def delete_message(self, msg: Message) -> Message:
+	async def delete_message(self, msg: Message) -> Message:
+		#le ratelimit implementation :trollface:
+		await asyncio.sleep(0.1)
+
 		requests.delete(
 			self.__BASE_API_URL + f'/channels/{msg.channel_id}/messages/{msg.id}',
 			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
 		)
 
-	def add_reaction(self, msg: Message, emoji) -> Message:
+	async def add_reaction(self, msg: Message, emoji) -> Message:
+		#le ratelimit implementation :trollface:
+		await asyncio.sleep(0.1)
+
 		def __convert(emoji):
 			if isinstance(emoji, Reaction):
 				emoji = emoji.emoji
@@ -377,7 +450,10 @@ class DiscPy:
 			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
 		)
 
-	def fetch_user(self, user_id) -> User:
+	async def fetch_user(self, user_id) -> User:
+		#le ratelimit implementation :trollface:
+		await asyncio.sleep(0.1)
+
 		return User(requests.get(
 			self.__BASE_API_URL + f'/users/{user_id}',
 			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
