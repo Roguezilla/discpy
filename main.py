@@ -5,24 +5,23 @@ from dotenv import load_dotenv
 from discpy import DiscPy
 from message import Message, Embed
 from events import ReactionAddEvent, ReadyEvent
+import perms;
 
 load_dotenv()
 
-bot = DiscPy(os.getenv('TOKEN'), ',')
+bot = DiscPy(os.getenv('TOKEN'), ',', os.getenv('OWNER_ID'))
 
 """
 Events
 """
 @bot.event
 async def on_ready(self: DiscPy, ready: ReadyEvent):
-		print(f'->Logged in as {ready.user.username}')
-		await self.update_presence('with stars.', self.ActivityType.WATCHING, self.Status.DND)
+	print(f'->Logged in as {ready.user.username}')
+	await self.update_presence('with stars.', self.ActivityType.WATCHING, self.Status.DND)
 
 @bot.event
 async def on_message(self: DiscPy, msg: Message):
-	print(msg.author.username)
-	print(f'ADD_REACTIONS -> {await self.has_permissions(msg, self.Permissions.ADD_REACTIONS)}')
-	print(f'BAN_MEMBERS -> {await self.has_permissions(msg, self.Permissions.BAN_MEMBERS)}')
+	pass
 
 @bot.event
 async def on_reaction_add(self: DiscPy, reaction: ReactionAddEvent):
@@ -31,12 +30,17 @@ async def on_reaction_add(self: DiscPy, reaction: ReactionAddEvent):
 """
 Commands
 """
-# TODO: figure out permissions
-@bot.command
+@bot.command()
+@bot.permissions(perms.basic_perms_check)
 async def ping(self: DiscPy, msg: Message):
 	await self.send_message(msg.channel_id, 'Pong.')
 
-@bot.command
+@bot.command()
+@bot.permissions(perms.basic_perms_check2)
+async def ping2(self: DiscPy, msg: Message):
+	await self.send_message(msg.channel_id, 'Pong2.')
+
+@bot.command()
 async def embed(self: DiscPy, msg: Message):
 	embed = Embed(title='Title', description='Description.', url='https://www.google.com/', color=0xffcc00)
 	embed.set_author(name='rogue', url='https://www.google.com/', icon_url='https://cdn.discordapp.com/emojis/700809695933497355.gif')

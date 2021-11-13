@@ -196,9 +196,10 @@ class DiscPy:
 		SEND_MESSAGES_IN_THREADS = (1 << 38)
 		START_EMBEDDED_ACTIVITIES = (1 << 39)
 
-	def __init__(self, token, prefix):
+	def __init__(self, token, prefix, owner_id):
 		self.__token = token
 		self.__prefix = prefix
+		self.__owner_id = owner_id;
 		self.loop = asyncio.get_event_loop()
 		self.__socket = None
 		self.__BASE_API_URL = 'https://discord.com/api/v9'
@@ -211,12 +212,17 @@ class DiscPy:
 
 		self.__commands = {}
 
+	def start(self):
+		self.loop.create_task(self.__process_payloads())
+		self.loop.run_forever()
+
 	def __get_gateway(self):
 		return requests.get(url = self.__BASE_API_URL + '/gateway', headers = { 'Authorization': f'Bot {self.__token}' }).json()['url'] + '/?v=9&encoding=json'
 
-	def __log(self, str):
+	def __log(self, log, level = 0):
 		if self.debug:
-			print(str)
+			level = '\033[92m[OK]\033[0m' if level == 0 else ('\033[96m[SOCKET]\033[0m' if level == 1 else '\033[91m[ERR]\033[0m')
+			print(f'{level} {log}')
 
 	def __hearbeat_json(self):
 		return json.dumps({
@@ -248,16 +254,18 @@ class DiscPy:
 			}
 		})
 
-	def command(self, func):
-		self.__commands[f'{self.__prefix}{func.__name__}'] = func
-		self.__log(f'Registed command: {func.__name__}')
+	async def __do_heartbeats(self, interval):
+		while True:
+			payload = {
+				'op': self.OpCodes.HEARTBEAT,
+				'd': self.__sequence
+			}
+			await self.__socket.send(json.dumps(payload))
 
-	def is_command(self, start):
-		return start in self.__commands
+			if self.debug:
+				self.__log('Sent \033[93mHEARTBEAT\033[0m', 1)
 
-	def event(self, event: Callable):
-		setattr(self, event.__name__, event)
-		self.__log(f'Registed event: {event.__name__}')
+			await asyncio.sleep(delay=interval / 1000)
 
 	async def update_presence(self, name, type: ActivityType, status: Status):
 		presence = {
@@ -272,20 +280,8 @@ class DiscPy:
 				'afk': False
 			}
 		}
+		
 		await self.__socket.send(json.dumps(presence))
-
-	async def __do_heartbeats(self, interval):
-		while True:
-			payload = {
-				'op': self.OpCodes.HEARTBEAT,
-				'd': self.__sequence
-			}
-			await self.__socket.send(json.dumps(payload))
-
-			if self.debug:
-				print('Sent OpCodes.HEARTBEAT')
-
-			await asyncio.sleep(delay=interval / 1000)
 
 	async def __process_payloads(self):
 		async with websockets.connect(self.__get_gateway()) as self.__socket:
@@ -304,24 +300,24 @@ class DiscPy:
 
 							await self.__socket.send(self.__identify_json(intents=self.Intents.GUILD_MESSAGES | self.Intents.GUILD_MESSAGE_REACTIONS))
 								
-							self.__log('Sent OpCodes.IDENTIFY')
+							self.__log('Sent \033[93mIDENTIFY\033[0m', 1)
 								
 						elif op == self.OpCodes.HEARTBEAT_ACK:
-							self.__log('Got OpCodes.HEARTBEAT_ACK')
+							self.__log('Got \033[93mHEARTBEAT_ACK\033[0m', 1)
 
 						elif op == self.OpCodes.HEARTBEAT:
 							await self.__socket.send(self.__hearbeat_json())
 
-							self.__log('Forced OpCodes.HEARTBEAT')
+							self.__log('Forced \033[93mHEARTBEAT\033[0m', 1)
 
 						elif op == self.OpCodes.RECONNECT:
-							self.__log('Got OpCodes.RECONNECT')
+							self.__log('Got \033[93mRECONNECT\033[0m', 1)
 
 							self.__socket.send(self.__resume_json())
 
-							self.__log('Sent OpCodes.RESUME')
+							self.__log('Sent \033[93mRESUME\033[0m', 1)
 						else:
-							self.__log(f'Got unhanled OpCode: {op}')
+							self.__log(f'Got \033[91munhanled\033[0m OpCode: \033[1m{op}\033[0m', 1)
 					else:
 						event = recv_json['t']
 						if event == 'READY':
@@ -336,37 +332,66 @@ class DiscPy:
 							self.__log('RESUMED')
 
 						elif event == 'MESSAGE_CREATE':
-							await self.__on_message(Message(recv_json['d']))
+							def is_command(start):
+								return start in self.__commands
+
+							async def on_message(msg: Message):
+								split = msg.content.split(' ')
+								if is_command(split[0]) and msg.author.id != self.me.user.id:
+									if 'cond' in self.__commands[msg.content.split(' ')[0]]:
+										if await self.__commands[msg.content.split(' ')[0]]['cond'](self, msg):
+											await self.__commands[msg.content.split(' ')[0]]['func'](self, msg, *split[1:])
+									else:
+										await self.__commands[msg.content.split(' ')[0]]['func'](self, msg, *split[1:])
+
+								if hasattr(self, 'on_message'):
+									await getattr(self, 'on_message')(self, msg)
+
+							await on_message(Message(recv_json['d']))
 
 						elif event == 'MESSAGE_REACTION_ADD':
 							if hasattr(self, 'on_reaction_add'):
 								await getattr(self, 'on_reaction_add')(self, ReactionAddEvent(recv_json['d']))
 
-					self.__log(f'Sequence: {self.__sequence}')
+					self.__log(f'Sequence: \033[1m{self.__sequence}\033[0m', 1)
 
 				except JSONDecodeError:
-					print('JSONDecodeError')
+					self.__log('JSONDecodeError', 2)
 
-	def start(self):
-		self.loop.create_task(self.__process_payloads())
-		self.loop.run_forever()
+	"""
+	DECORATORS
+	"""
+	def command(self):
+		def wrapper(func):
+			if f'{self.__prefix}{func.__name__}' not in self.__commands:
+				self.__commands[f'{self.__prefix}{func.__name__}'] = {}
 
-	async def __on_message(self, msg: Message):
-		split = msg.content.split(' ')
-		if self.is_command(split[0]) and msg.author.id != self.me.user.id:
-			await self.__commands[msg.content.split(" ")[0]](self, msg, *split[1:])
+			self.__commands[f'{self.__prefix}{func.__name__}']['func'] = func
+			self.__log(f'Registed command: \033[93m{func.__name__}\033[0m')
 
-		if hasattr(self, 'on_message'):
-			await getattr(self, 'on_message')(self, msg)
+			return func
+		
+		return wrapper
 
-	async def has_permissions(self, msg: Message, permission):
-		guild_roles = await self.fetch_roles(msg.guild_id)
-		for role in guild_roles:
-			if next((r for r in msg.author.roles if r == role.id), None) != None:
-				return (int(role.permissions) & permission) == permission
+	def permissions(self, cond):
+		def wrapper(func):
+			if f'{self.__prefix}{func.__name__}' not in self.__commands:
+				self.__commands[f'{self.__prefix}{func.__name__}'] = {}
 
-		return False
+			self.__commands[f'{self.__prefix}{func.__name__}']['cond'] = cond
+			self.__log(f'Registed permissions for command: \033[93m{func.__name__}\033[0m')
 
+			return func
+
+		return wrapper
+
+	def event(self, event: Callable):
+		setattr(self, event.__name__, event)
+		self.__log(f'Registed event: \033[93m{event.__name__}\033[0m')
+
+	"""
+	REST API
+	"""
 	async def send_message(self, channel_id, content = '', embed = None):
 		#le ratelimit implementation :trollface:
 		await asyncio.sleep(0.1)
@@ -458,3 +483,18 @@ class DiscPy:
 			self.__BASE_API_URL + f'/users/{user_id}',
 			headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
 		).json())
+
+	"""
+	HELPERS
+	"""
+	async def has_permissions(self, msg: Message, permission):
+		guild_roles = await self.fetch_roles(msg.guild_id)
+		for role in guild_roles:
+			if next((r for r in msg.author.roles if r == role.id), None) != None:
+				return (int(role.permissions) & permission) == permission
+
+		return False
+
+	def is_owner(self, id):
+		# GET /oauth2/applications/@me into the class Application later
+		return self.__owner_id == id
