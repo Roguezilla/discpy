@@ -1,10 +1,11 @@
 from json.decoder import JSONDecodeError
-from typing import Callable, List
+from typing import Callable, Dict, List
 import requests
 import websockets
 import asyncio
 import json
 import platform
+import inspect
 
 from events import ReactionAddEvent, ReadyEvent
 from message import Message, User, Reaction, Emoji, Role, Member
@@ -196,11 +197,15 @@ class DiscPy:
 		SEND_MESSAGES_IN_THREADS = (1 << 38)
 		START_EMBEDDED_ACTIVITIES = (1 << 39)
 
-	def __init__(self, token, prefix, owner_id):
+	# dummy class
+	class Cog:
+		pass
+	
+	def __init__(self, token, prefix=",", owner_id="", debug=1):
 		self.__token = token
 		self.__prefix = prefix
 		self.__owner_id = owner_id;
-		self.loop = asyncio.get_event_loop()
+		self.__loop = asyncio.get_event_loop()
 		self.__socket = None
 		self.__BASE_API_URL = 'https://discord.com/api/v9'
 
@@ -212,9 +217,13 @@ class DiscPy:
 
 		self.__commands = {}
 
+		self.__REST_DELAY = 0.1
+
+		self.__cogs: Dict[str, Callable]= {}
+
 	def start(self):
-		self.loop.create_task(self.__process_payloads())
-		self.loop.run_forever()
+		self.__loop.create_task(self.__process_payloads())
+		self.__loop.run_forever()
 
 	def __get_gateway(self):
 		return requests.get(url = self.__BASE_API_URL + '/gateway', headers = { 'Authorization': f'Bot {self.__token}' }).json()['url'] + '/?v=9&encoding=json'
@@ -296,7 +305,7 @@ class DiscPy:
 					op = recv_json['op']
 					if op != self.OpCodes.DISPATCH:
 						if op == self.OpCodes.HELLO:
-							self.loop.create_task(self.__do_heartbeats(recv_json['d']['heartbeat_interval']))
+							self.__loop.create_task(self.__do_heartbeats(recv_json['d']['heartbeat_interval']))
 
 							await self.__socket.send(self.__identify_json(intents=self.Intents.GUILD_MESSAGES | self.Intents.GUILD_MESSAGE_REACTIONS))
 								
@@ -316,7 +325,9 @@ class DiscPy:
 							self.__socket.send(self.__resume_json())
 
 							self.__log('Sent \033[93mRESUME\033[0m', 1)
+							
 						else:
+						    # the wrapper should probably handle opcode 9 :thinking:
 							self.__log(f'Got \033[91munhanled\033[0m OpCode: \033[1m{op}\033[0m', 1)
 					else:
 						event = recv_json['t']
@@ -336,8 +347,11 @@ class DiscPy:
 								return start in self.__commands
 
 							async def on_message(msg: Message):
+								if msg.author.id == self.me.user.id:
+									return
+								
 								split = msg.content.split(' ')
-								if is_command(split[0]) and msg.author.id != self.me.user.id:
+								if is_command(split[0]):
 									if 'cond' in self.__commands[msg.content.split(' ')[0]]:
 										if await self.__commands[msg.content.split(' ')[0]]['cond'](self, msg):
 											await self.__commands[msg.content.split(' ')[0]]['func'](self, msg, *split[1:])
@@ -346,6 +360,10 @@ class DiscPy:
 
 								if hasattr(self, 'on_message'):
 									await getattr(self, 'on_message')(self, msg)
+
+								for cog in self.__cogs:
+									if 'on_message' in self.__cogs[cog]:
+										await self.__cogs[cog]['on_message'](self, msg)
 
 							await on_message(Message(recv_json['d']))
 
@@ -385,16 +403,28 @@ class DiscPy:
 
 		return wrapper
 
-	def event(self, event: Callable):
-		setattr(self, event.__name__, event)
-		self.__log(f'Registed event: \033[93m{event.__name__}\033[0m')
+	def event(self, cog=None):
+		def wrapper(func):
+			if cog is not None and isinstance(cog, self.Cog):
+				if cog not in self.__cogs:
+					self.__cogs[cog] = {}
+
+				self.__cogs[cog][func.__name__] = func
+				self.__log(f'Registed cog event "\033[93m{func.__name__}\033[0m" for cog {cog}')
+			else:
+				setattr(self, func.__name__, func)
+				self.__log(f'Registed event: \033[93m{func.__name__}\033[0m')
+
+			return func
+			
+		return wrapper
 
 	"""
 	REST API
 	"""
 	async def send_message(self, channel_id, content = '', embed = None):
 		#le ratelimit implementation :trollface:
-		await asyncio.sleep(0.1)
+		await asyncio.sleep(self.__REST_DELAY)
 
 		data = {}
 		if content:
@@ -412,7 +442,7 @@ class DiscPy:
 		return Message(sent.json()) if sent else None
 
 	async def fetch_roles(self, guild_id) -> List[Role]:
-		await asyncio.sleep(0.1)
+		await asyncio.sleep(self.__REST_DELAY)
 
 		resp = requests.get(
 			self.__BASE_API_URL + f'/guilds/{guild_id}/roles',
@@ -422,7 +452,7 @@ class DiscPy:
 		return [Role(role) for role in resp]
 
 	async def fetch_message(self, channel_id, message_id) -> Message:
-		await asyncio.sleep(0.1)
+		await asyncio.sleep(self.__REST_DELAY)
 
 		return Message(requests.get(
 			self.__BASE_API_URL + f'/channels/{channel_id}/messages/{message_id}',
@@ -431,7 +461,7 @@ class DiscPy:
 
 	async def edit_message(self, msg: Message, content = '', embed = None):
 		#le ratelimit implementation :trollface:
-		await asyncio.sleep(0.1)
+		await asyncio.sleep(self.__REST_DELAY)
 
 		data = {}
 		if content:
@@ -450,7 +480,7 @@ class DiscPy:
 
 	async def delete_message(self, msg: Message) -> Message:
 		#le ratelimit implementation :trollface:
-		await asyncio.sleep(0.1)
+		await asyncio.sleep(self.__REST_DELAY)
 
 		requests.delete(
 			self.__BASE_API_URL + f'/channels/{msg.channel_id}/messages/{msg.id}',
@@ -459,7 +489,7 @@ class DiscPy:
 
 	async def add_reaction(self, msg: Message, emoji) -> Message:
 		#le ratelimit implementation :trollface:
-		await asyncio.sleep(0.1)
+		await asyncio.sleep(self.__REST_DELAY)
 
 		def __convert(emoji):
 			if isinstance(emoji, Reaction):
@@ -477,7 +507,7 @@ class DiscPy:
 
 	async def fetch_user(self, user_id) -> User:
 		#le ratelimit implementation :trollface:
-		await asyncio.sleep(0.1)
+		await asyncio.sleep(self.__REST_DELAY)
 
 		return User(requests.get(
 			self.__BASE_API_URL + f'/users/{user_id}',

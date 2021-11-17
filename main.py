@@ -5,25 +5,26 @@ from dotenv import load_dotenv
 from discpy import DiscPy
 from message import Message, Embed
 from events import ReactionAddEvent, ReadyEvent
-import perms;
+from cog_test import TestCog
+import perms
 
 load_dotenv()
 
-bot = DiscPy(os.getenv('TOKEN'), ',', os.getenv('OWNER_ID'))
+bot = DiscPy(os.getenv('TOKEN'), owner_id=os.getenv('OWNER_ID'), debug=1)
 
 """
 Events
 """
-@bot.event
+@bot.event()
 async def on_ready(self: DiscPy, ready: ReadyEvent):
 	print(f'->Logged in as {ready.user.username}')
 	await self.update_presence('with stars.', self.ActivityType.WATCHING, self.Status.DND)
 
-@bot.event
+@bot.event()
 async def on_message(self: DiscPy, msg: Message):
-	pass
+	await self.send_message(msg.channel_id, 'on_message')
 
-@bot.event
+@bot.event()
 async def on_reaction_add(self: DiscPy, reaction: ReactionAddEvent):
 	pass
 	
@@ -52,5 +53,7 @@ async def embed(self: DiscPy, msg: Message):
 	embed.add_field(name='maybe', value='<@212149701535989760>', inline=False)
 
 	await self.send_message(msg.channel_id, embed=embed.as_json())
+
+TestCog(bot)
 
 bot.start()
