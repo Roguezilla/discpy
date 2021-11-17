@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from discpy import DiscPy
 from message import Message, Embed
 from events import ReactionAddEvent, ReadyEvent
-from cog_test import TestCog
+from cog_test import TestCog, TestCog2
 import perms
 
 load_dotenv()
@@ -55,5 +55,6 @@ async def embed(self: DiscPy, msg: Message):
 	await self.send_message(msg.channel_id, embed=embed.as_json())
 
 TestCog(bot)
+TestCog2(bot)
 
 bot.start()
