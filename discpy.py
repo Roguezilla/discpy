@@ -8,7 +8,7 @@ import platform
 import inspect
 
 from events import ReactionAddEvent, ReadyEvent
-from message import Message, User, Reaction, Emoji, Role, Member
+from message import Application, Message, User, Reaction, Emoji, Role, Member
 
 class DiscPy:
 	class OpCodes:
@@ -201,10 +201,10 @@ class DiscPy:
 	class Cog:
 		pass
 	
-	def __init__(self, token, prefix=",", owner_id="", debug=1):
+	def __init__(self, token, prefix=",", debug=1):
 		self.__token = token
 		self.__prefix = prefix
-		self.__owner_id = owner_id;
+		self.__owner_ids = []
 		self.__loop = asyncio.get_event_loop()
 		self.__socket = None
 		self.__BASE_API_URL = 'https://discord.com/api/v9'
@@ -213,7 +213,7 @@ class DiscPy:
 
 		self.me: ReadyEvent = None
 
-		self.debug = 1
+		self.__debug = 1
 
 		self.__commands = {}
 
@@ -229,7 +229,7 @@ class DiscPy:
 		return requests.get(url = self.__BASE_API_URL + '/gateway', headers = { 'Authorization': f'Bot {self.__token}' }).json()['url'] + '/?v=9&encoding=json'
 
 	def __log(self, log, level = 0):
-		if self.debug:
+		if self.__debug:
 			level = '\033[92m[OK]\033[0m' if level == 0 else ('\033[96m[SOCKET]\033[0m' if level == 1 else '\033[91m[ERR]\033[0m')
 			print(f'{level} {log}')
 
@@ -271,7 +271,7 @@ class DiscPy:
 			}
 			await self.__socket.send(json.dumps(payload))
 
-			if self.debug:
+			if self.__debug:
 				self.__log('Sent \033[93mHEARTBEAT\033[0m', 1)
 
 			await asyncio.sleep(delay=interval / 1000)
@@ -520,11 +520,23 @@ class DiscPy:
 	async def has_permissions(self, msg: Message, permission):
 		guild_roles = await self.fetch_roles(msg.guild_id)
 		for role in guild_roles:
-			if next((r for r in msg.author.roles if r == role.id), None) != None:
+			if next((r for r in msg.author.roles if r == role.id), None):
 				return (int(role.permissions) & permission) == permission
 
 		return False
 
 	def is_owner(self, id):
-		# GET /oauth2/applications/@me into the class Application later
-		return self.__owner_id == id
+		if not self.__owner_ids:
+			app = Application(requests.get(
+				self.__BASE_API_URL + '/oauth2/applications/@me',
+				headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' }
+			).json())
+
+			if app.team:
+				member: Application.Team.Member
+				for member in app.team.members:
+					self.__owner_ids.append(member.user.id)
+			else:
+				self.__owner_ids.append(app.owner.id)
+
+		return str(id) in self.__owner_ids

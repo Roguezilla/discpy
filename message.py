@@ -224,8 +224,8 @@ class MessageActivity:
 		self.party_id = test(activity, 'party_id')
 
 class Application:
-	class __Team:
-		class __Member:
+	class Team:
+		class Member:
 			def __init__(self, member):
 				self.membership_state = member['membership_state']
 				self.permissions = member['permissions']
@@ -236,9 +236,9 @@ class Application:
 			self.icon = team['icon']
 			self.id = team['id']
 
-			self.members: List[self.__Member] = []
+			self.members: List[self.Member] = []
 			for member in team['members']:
-				self.members.append(self.__Member(member))
+				self.members.append(self.Member(member))
 
 			self.name = team['name']
 
@@ -263,7 +263,7 @@ class Application:
 		self.owner = User(app['owner']) if test(app, 'owner') else None
 		self.summary = test(app, 'summary')
 		self.verify_key = test(app, 'verify_key')
-		self.team = self.__Team(app['team']) if test(app, 'team') else None
+		self.team = self.Team(app['team']) if test(app, 'team') else None
 		self.guild_id = test(app, 'guild_id')
 		self.primary_sku_id = test(app, 'primary_sku_id')
 		self.slug = test(app, 'slug')

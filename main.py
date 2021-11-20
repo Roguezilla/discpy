@@ -10,22 +10,22 @@ import perms
 
 load_dotenv()
 
-bot = DiscPy(os.getenv('TOKEN'), owner_id=os.getenv('OWNER_ID'), debug=1)
+bot = DiscPy(os.getenv('TOKEN'), debug=1)
 
 """
 Events
 """
 @bot.event()
-async def on_ready(self: DiscPy, ready: ReadyEvent):
-	print(f'->Logged in as {ready.user.username}')
+async def on_ready(self: DiscPy, event: ReadyEvent):
+	print(f'->Logged in as {event.user.username}')
 	await self.update_presence('with stars.', self.ActivityType.WATCHING, self.Status.DND)
 
 @bot.event()
-async def on_message(self: DiscPy, msg: Message):
-	await self.send_message(msg.channel_id, 'on_message')
+async def on_message(self: DiscPy, event: Message):
+	await self.send_message(event.channel_id, 'on_message')
 
 @bot.event()
-async def on_reaction_add(self: DiscPy, reaction: ReactionAddEvent):
+async def on_reaction_add(self: DiscPy, event: ReactionAddEvent):
 	pass
 	
 """
