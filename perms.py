@@ -1,5 +1,6 @@
 from discpy import DiscPy, Message
 
+
 async def basic_perms_check(self: DiscPy, msg: Message):
     return await self.has_permissions(msg, self.Permissions.MANAGE_MESSAGES)
 

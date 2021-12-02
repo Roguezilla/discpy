@@ -2,11 +2,11 @@ import os
 
 from dotenv import load_dotenv
 
-from discpy import DiscPy
-from message import Message, Embed
-from events import ReactionAddEvent, ReadyEvent
-from cog_test import TestCog, TestCog2
 import perms
+from cog_test import TestCog, TestCog2
+from discpy import DiscPy
+from events import ReactionAddEvent, ReadyEvent
+from message import Embed, Message
 
 load_dotenv()
 

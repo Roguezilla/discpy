@@ -1,16 +1,17 @@
-import os
-
-from json.decoder import JSONDecodeError
-from typing import Callable, Dict, List
-import requests
-import websockets
 import asyncio
 import json
+import os
 import platform
+from json.decoder import JSONDecodeError
 from queue import Queue
+from typing import Callable, Dict, List
+
+import requests
+import websockets
 
 from events import ReactionAddEvent, ReadyEvent
-from message import Application, Message, User, Reaction, Emoji, Role, Member
+from message import Application, Emoji, Member, Message, Reaction, Role, User
+
 
 class DiscPy:
 	class OpCodes:

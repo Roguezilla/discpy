@@ -1,5 +1,3 @@
-import asyncio
-
 from discpy import DiscPy, Message
 
 class TestCog(DiscPy.Cog):	
