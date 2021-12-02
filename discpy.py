@@ -1,3 +1,5 @@
+import os
+
 from json.decoder import JSONDecodeError
 from typing import Callable, Dict, List
 import requests
@@ -5,7 +7,7 @@ import websockets
 import asyncio
 import json
 import platform
-import inspect
+from queue import Queue
 
 from events import ReactionAddEvent, ReadyEvent
 from message import Application, Message, User, Reaction, Emoji, Role, Member
@@ -221,9 +223,14 @@ class DiscPy:
 
 		self.__cogs: Dict[str, Callable]= {}
 
+		self.__queue = Queue()
+
 	def start(self):
 		self.__loop.create_task(self.__process_payloads())
 		self.__loop.run_forever()
+
+	def close(self):
+		self.__loop.close()
 
 	def __get_gateway(self):
 		return requests.get(url = self.__BASE_API_URL + '/gateway', headers = { 'Authorization': f'Bot {self.__token}' }).json()['url'] + '/?v=9&encoding=json'
@@ -325,9 +332,21 @@ class DiscPy:
 							self.__socket.send(self.__resume_json())
 
 							self.__log('Sent \033[93mRESUME\033[0m', 1)
-							
+						
+						elif op == self.OpCodes.INVALIDATE_SESSION:
+							self.__log('Got \033[91mINVALIDATE_SESSION\033[0m', 1)
+
+							self.__log('Restarting...', 2)
+
+							try:
+								await self.close()
+							except:
+								pass
+							finally:
+								os.system('python main.py')
+
 						else:
-						    # the wrapper should probably handle opcode 9 :thinking:
+							# the wrapper should probably handle opcode 9 :thinking:
 							self.__log(f'Got \033[91munhanled\033[0m OpCode: \033[1m{op}\033[0m', 1)
 					else:
 						event = recv_json['t']
