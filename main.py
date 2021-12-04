@@ -39,7 +39,7 @@ async def ping(self: DiscPy, msg: Message):
 @bot.command()
 @bot.permissions(perms.basic_perms_check2)
 async def ping2(self: DiscPy, msg: Message):
-	await self.send_message(msg.channel_id, 'Pong2.')
+	await self.send_message(msg.author.id, 'Pong2.', is_dm = True)
 
 @bot.command()
 async def embed(self: DiscPy, msg: Message):

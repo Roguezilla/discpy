@@ -442,7 +442,7 @@ class DiscPy:
 	"""
 	REST API
 	"""
-	async def send_message(self, channel_id, content = '', embed = None):
+	async def send_message(self, channel_id, content = '', embed = None, is_dm = False):
 		#le ratelimit implementation :trollface:
 		await asyncio.sleep(self.__REST_DELAY)
 
@@ -452,6 +452,14 @@ class DiscPy:
 		
 		if embed:
 			data['embeds'] = [embed]
+
+		if is_dm:
+			dm = requests.post(
+				self.__BASE_API_URL + '/users/@me/channels',
+				headers = { 'Authorization': f'Bot {self.__token}', 'Content-Type': 'application/json', 'User-Agent': 'discpy' },
+				json = {'recipient_id': channel_id}
+			).json()
+			channel_id = dm['id']
 
 		sent = requests.post(
 			self.__BASE_API_URL + f'/channels/{channel_id}/messages',
