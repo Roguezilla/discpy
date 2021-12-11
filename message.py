@@ -1,7 +1,8 @@
 import json
-from datetime import datetime
-from typing import List
 
+from datetime import datetime
+
+from typing import List
 
 def test(dict, key):
 	return None if not dict else dict[key] if key in dict else None
@@ -170,8 +171,11 @@ class Embed:
 	def set_author(self, name = '', url = '', icon_url = ''):
 		self.author = self.__Author( { 'name': name, 'url': url, 'icon_url': icon_url } )
 
-	def add_field(self, name, value, inline):
+	def add_field(self, name, value, inline=True):
 		self.fields.append( self.__Field( {'name': name, 'value': value, 'inline': inline } ) )
+
+	def set_field_at(self, idx, name, value, inline=True):
+		self.fields[idx] = self.__Field( {'name': name, 'value': value, 'inline': inline } )
 
 	def as_json(self):
   		return json.loads(
@@ -205,7 +209,7 @@ class Emoji:
 	def __eq__(self, o):
 		return self.id == o.id and self.name == o.name
 
-class 	Reaction:
+class Reaction:
 	def __init__(self, reaction):
 		self.count = reaction['count']
 		self.me = reaction['me']
