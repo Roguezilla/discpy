@@ -219,8 +219,6 @@ class DiscPy:
 
 		self.__commands = {}
 
-		self.__REST_DELAY = 0.1
-
 		self.__cogs: Dict[str, Callable]= {}
  
 		self.__session = requests.Session()
