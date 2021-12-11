@@ -1,4 +1,4 @@
-from discpy import DiscPy, Message
+from discpy.discpy import DiscPy, Message
 
 class TestCog(DiscPy.Cog):	
 	def __init__(self, bot: DiscPy):

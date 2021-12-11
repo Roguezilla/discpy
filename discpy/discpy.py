@@ -7,8 +7,8 @@ from queue import Queue
 from typing import Callable, Dict, List
 
 import requests
-from requests.adapters import HTTPAdapter
 import websockets
+from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from .events import ReactionAddEvent, ReadyEvent

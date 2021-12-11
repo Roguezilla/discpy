@@ -1,4 +1,4 @@
-from discpy import DiscPy, Message
+from discpy.discpy import DiscPy, Message
 
 
 async def basic_perms_check(self: DiscPy, msg: Message):
